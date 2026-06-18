@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EWS Tanah Longsor — Sleman, DIY</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ─── TOKENS ─────────────────────────────────────────── */
+    :root {
+      --bg:          #0a0f1a;
+      --surface:     #111827;
+      --surface2:    #1a2235;
+      --border:      #1e2d45;
+      --border-hi:   #2d4266;
+
+      --txt:         #e2e8f0;
+      --txt-muted:   #64748b;
+      --txt-dim:     #334155;
+
+      --safe:        #10b981;
+      --safe-bg:     rgba(16,185,129,.10);
+      --warn:        #f59e0b;
+      --warn-bg:     rgba(245,158,11,.10);
+      --danger:      #ef4444;
+      --danger-bg:   rgba(239,68,68,.10);
+      --offline:     #6b7280;
+      --offline-bg:  rgba(107,114,128,.10);
+
+      --accent:      #3b82f6;
+      --accent2:     #6366f1;
+
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Inter', sans-serif;
+      --r:    10px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--txt);
+      font-family: var(--sans);
+      min-height: 100vh;
+      padding: 0 0 60px;
+    }
+
+    /* ─── TOPBAR ──────────────────────────────────────────── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 32px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .topbar-brand .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--safe);
+      box-shadow: 0 0 8px var(--safe);
+      flex-shrink: 0;
+      animation: blink 2s ease-in-out infinite;
+    }
+    .topbar-brand .dot.offline { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+
+    @keyframes blink {
+      0%,100% { opacity:1; } 50% { opacity:.4; }
+    }
+
+    .topbar-title {
+      font-family: var(--mono);
+      font-size: .85rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+      color: var(--txt);
+    }
+
+    .topbar-title span {
+      color: var(--txt-muted);
+      font-weight: 400;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .global-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      border: 1px solid;
+      transition: all .4s;
+    }
+
+    .badge-aman    { background: var(--safe-bg);    color: var(--safe);    border-color: var(--safe); }
+    .badge-waspada { background: var(--warn-bg);    color: var(--warn);    border-color: var(--warn); }
+    .badge-bahaya  { background: var(--danger-bg);  color: var(--danger);  border-color: var(--danger); animation: pulseRed 1.2s ease-in-out infinite; }
+    .badge-offline { background: var(--offline-bg); color: var(--offline); border-color: var(--offline); }
+
+    @keyframes pulseRed {
+      0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,.4); }
+      50%      { box-shadow: 0 0 0 8px rgba(239,68,68,.0); }
+    }
+
+    .last-update {
+      font-family: var(--mono);
+      font-size: .72rem;
+      color: var(--txt-muted);
+    }
+
+    /* ─── LAYOUT ──────────────────────────────────────────── */
+    .page {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 28px 24px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* ─── SECTION LABEL ───────────────────────────────────── */
+    .section-label {
+      font-family: var(--mono);
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--txt-dim);
+      margin-bottom: 12px;
+    }
+
+    /* ─── SENSOR CARDS ────────────────────────────────────── */
+    .sensor-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+    }
+
+    .scard {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 20px 22px 18px;
+      transition: border-color .3s, transform .2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .scard::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--safe);
+      transition: background .3s;
+    }
+
+    .scard.warn::before  { background: var(--warn); }
+    .scard.danger::before { background: var(--danger); }
+    .scard.offline::before { background: var(--offline); }
+
+    .scard:hover { transform: translateY(-2px); border-color: var(--border-hi); }
+
+    .scard-label {
+      font-size: .72rem;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--txt-muted);
+      margin-bottom: 10px;
+    }
+
+    .scard-icon {
+      font-size: 1.1rem;
+      margin-right: 5px;
+      opacity: .8;
+    }
+
+    .scard-value {
+      font-family: var(--mono);
+      font-size: 2.4rem;
+      font-weight: 700;
+      line-height: 1;
+      color: #fff;
+      margin-bottom: 8px;
+      transition: color .3s;
+    }
+
+    .scard-value.warn   { color: var(--warn); }
+    .scard-value.danger { color: var(--danger); }
+
+    .scard-status {
+      font-size: .75rem;
+      font-weight: 500;
+      color: var(--safe);
+      transition: color .3s;
+    }
+
+    .scard-status.warn   { color: var(--warn); }
+    .scard-status.danger { color: var(--danger); animation: blink 1s ease-in-out infinite; }
+
+    /* ─── SIGNAL ROW ──────────────────────────────────────── */
+    .signal-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px;
+    }
+
+    .sigcard {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .sigcard-icon {
+      font-size: 1.5rem;
+      opacity: .75;
+    }
+
+    .sigcard-body {
+      padding: 1rem;
+      background: #fff;  
+    }
+
+    .sigcard-label {
+      font-size: .68rem;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--txt-muted);
+      margin-bottom: 4px;
+    }
+
+    .sigcard-value {
+      font-family: var(--mono);
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .sigcard-quality {
+      font-size: .72rem;
+      margin-top: 2px;
+    }
+
+    .q-excellent { color: var(--safe); }
+    .q-good      { color: #22d3ee; }
+    .q-weak      { color: var(--warn); }
+    .q-critical  { color: var(--danger); }
+
+    /* ─── NODE STATUS TABLE ───────────────────────────────── */
+    .node-table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+    }
+
+    .node-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .82rem;
+    }
+
+    .node-table thead th {
+      background: var(--surface2);
+      padding: 11px 16px;
+      text-align: left;
+      font-family: var(--mono);
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--txt-muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .node-table tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background .15s;
+    }
+
+    .node-table tbody tr:last-child { border-bottom: none; }
+    .node-table tbody tr:hover { background: var(--surface2); }
+
+    .node-table tbody td {
+      padding: 12px 16px;
+      color: var(--txt);
+      font-family: var(--mono);
+    }
+
+    .node-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+
+    .pill-online  { background: var(--safe-bg);    color: var(--safe); }
+    .pill-offline { background: var(--offline-bg); color: var(--offline); }
+    .pill-danger  { background: var(--danger-bg);  color: var(--danger); }
+
+    /* ─── CHART GRID ──────────────────────────────────────── */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 16px;
+    }
+
+    .chart-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+    }
+
+    .chart-header {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .chart-title {
+      font-size: .78rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+      color: var(--txt);
+    }
+
+    .chart-sub {
+      font-family: var(--mono);
+      font-size: .68rem;
+      color: var(--txt-muted);
+    }
+
+    .chart-frame {
+      width: 100%;
+      height: 230px;
+      border: none;
+      display: block;
+    }
+
+    /* ─── ALERT LOG ───────────────────────────────────────── */
+    .alert-log {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+    }
+
+    .alert-log-header {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .alert-log-title {
+      font-size: .78rem;
+      font-weight: 600;
+    }
+
+    .alert-count {
+      font-family: var(--mono);
+      font-size: .72rem;
+      background: var(--danger-bg);
+      color: var(--danger);
+      padding: 2px 9px;
+      border-radius: 10px;
+      font-weight: 700;
+    }
+
+    .alert-list {
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .alert-list::-webkit-scrollbar { width: 4px; }
+    .alert-list::-webkit-scrollbar-track { background: transparent; }
+    .alert-list::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+
+    .alert-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 11px 18px;
+      border-bottom: 1px solid var(--border);
+      font-size: .8rem;
+      animation: fadeIn .3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity:0; transform: translateY(-4px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+
+    .alert-item:last-child { border-bottom: none; }
+
+    .alert-time {
+      font-family: var(--mono);
+      font-size: .68rem;
+      color: var(--txt-muted);
+      white-space: nowrap;
+      margin-top: 1px;
+      flex-shrink: 0;
+    }
+
+    .alert-msg { color: var(--txt); line-height: 1.4; }
+    .alert-msg.danger { color: var(--danger); font-weight: 600; }
+    .alert-msg.warn   { color: var(--warn); }
+
+    .alert-empty {
+      padding: 28px 18px;
+      text-align: center;
+      color: var(--txt-muted);
+      font-size: .82rem;
+    }
+
+    /* ─── FOOTER BAR ──────────────────────────────────────── */
+    .footer-bar {
+      margin-top: 24px;
+      padding: 14px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .footer-bar span {
+      font-family: var(--mono);
+      font-size: .68rem;
+      color: var(--txt-muted);
+    }
+
+    .footer-bar .dot-live {
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--safe);
+      margin-right: 5px;
+      animation: blink 2s ease-in-out infinite;
+    }
+
+    /* ─── RESPONSIVE ──────────────────────────────────────── */
+    @media (max-width: 680px) {
+      .topbar { padding: 12px 16px; }
+      .page   { padding: 16px 12px 0; }
+      .chart-grid { grid-template-columns: 1fr; }
+      .scard-value { font-size: 1.9rem; }
+      .node-table { font-size: .75rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── TOPBAR ─────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="dot" id="dot-live"></div>
+      <div class="topbar-title">
+        EWS TANAH LONGSOR &nbsp;/&nbsp; <span>Sleman, DIY</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="global-badge badge-aman" id="global-badge">⬤ &nbsp;MENGHUBUNGKAN...</div>
+      <div class="last-update" id="last-update">— menunggu data —</div>
+    </div>
+  </header>
+
+  <!-- ─── MAIN PAGE ──────────────────────────────────────── -->
+  <main class="page">
+
+    <!-- SENSOR UTAMA -->
+    <section>
+      <div class="section-label">📡 Sensor Utama — Node Aktif</div>
+      <div class="sensor-grid">
+
+        <div class="scard" id="card-tilt">
+          <div class="scard-label"><span class="scard-icon">⛰️</span> Kemiringan Lereng</div>
+          <div class="scard-value" id="val-tilt">—</div>
+          <div class="scard-status" id="st-tilt">Menghubungkan...</div>
+        </div>
+
+        <div class="scard" id="card-rain">
+          <div class="scard-label"><span class="scard-icon">🌧️</span> Curah Hujan</div>
+          <div class="scard-value" id="val-rain">—</div>
+          <div class="scard-status" id="st-rain">Menghubungkan...</div>
+        </div>
+
+        <div class="scard" id="card-moist">
+          <div class="scard-label"><span class="scard-icon">💧</span> Kelembapan Tanah</div>
+          <div class="scard-value" id="val-moist">—</div>
+          <div class="scard-status" id="st-moist">Menghubungkan...</div>
+        </div>
+
+        <div class="scard" id="card-bat">
+          <div class="scard-label"><span class="scard-icon">🔋</span> Tegangan Baterai</div>
+          <div class="scard-value" id="val-bat">—</div>
+          <div class="scard-status" id="st-bat">Menghubungkan...</div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SINYAL RADIO -->
+    <section>
+      <div class="section-label">📶 Kualitas Sinyal Radio LoRa</div>
+      <div class="signal-row">
+
+        <div class="sigcard">
+          <div class="sigcard-icon">📻</div>
+          <div class="sigcard-body">
+            <div class="sigcard-label">RSSI</div>
+            <div class="sigcard-value" id="val-rssi">—</div>
+            <div class="sigcard-quality" id="q-rssi">—</div>
+          </div>
+        </div>
+
+        <div class="sigcard">
+          <div class="sigcard-icon">〰️</div>
+          <div class="sigcard-body">
+            <div class="sigcard-label">SNR</div>
+            <div class="sigcard-value" id="val-snr">—</div>
+            <div class="sigcard-quality" id="q-snr">—</div>
+          </div>
+        </div>
+
+        <div class="sigcard">
+          <div class="sigcard-icon">🔢</div>
+          <div class="sigcard-body">
+            <div class="sigcard-label">Node ID (Aktif)</div>
+            <div class="sigcard-value" id="val-nodeid">—</div>
+            <div class="sigcard-quality" id="q-nodeid" style="color:var(--txt-muted)">—</div>
+          </div>
+        </div>
+
+        <div class="sigcard">
+          <div class="sigcard-icon">🕐</div>
+          <div class="sigcard-body">
+            <div class="sigcard-label">Update Terakhir</div>
+            <div class="sigcard-value" id="val-uptime" style="font-size:.95rem">—</div>
+            <div class="sigcard-quality" id="q-uptime" style="color:var(--txt-muted)">—</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- GRAFIK THINGSPEAK -->
+    <section>
+      <div class="section-label">📈 Grafik Historis ThingSpeak</div>
+      <div class="chart-grid">
+
+        <div class="chart-box">
+          <div class="chart-header">
+            <span class="chart-title">Kemiringan Lereng (°)</span>
+            <span class="chart-sub">Field 1 · 15 data terakhir</span>
+          </div>
+          <iframe class="chart-frame"
+            src="https://thingspeak.mathworks.com/channels/3409950/charts/1?bgcolor=%23111827&color=%2310b981&dynamic=true&results=15&type=line&title=&yaxis=Kemiringan+%28%C2%B0%29&width=auto&height=220">
+          </iframe>
+        </div>
+
+        <div class="chart-box">
+          <div class="chart-header">
+            <span class="chart-title">Curah Hujan (mm)</span>
+            <span class="chart-sub">Field 2 · 15 data terakhir</span>
+          </div>
+          <iframe class="chart-frame"
+            src="https://thingspeak.mathworks.com/channels/3409950/charts/2?bgcolor=%23111827&color=%233b82f6&dynamic=true&results=15&type=line&title=&yaxis=Hujan+%28mm%29&width=auto&height=220">
+          </iframe>
+        </div>
+
+        <div class="chart-box">
+          <div class="chart-header">
+            <span class="chart-title">Kelembapan Tanah (%)</span>
+            <span class="chart-sub">Field 3 · 15 data terakhir</span>
+          </div>
+          <iframe class="chart-frame"
+            src="https://thingspeak.mathworks.com/channels/3409950/charts/3?bgcolor=%23111827&color=%236366f1&dynamic=true&results=15&type=line&title=&yaxis=Kelembapan+%28%25%29&width=auto&height=220">
+          </iframe>
+        </div>
+
+        <div class="chart-box">
+          <div class="chart-header">
+            <span class="chart-title">Tegangan Baterai (V)</span>
+            <span class="chart-sub">Field 6 · 15 data terakhir</span>
+          </div>
+          <iframe class="chart-frame"
+            src="https://thingspeak.mathworks.com/channels/3409950/charts/6?bgcolor=%23111827&color=%23f59e0b&dynamic=true&results=15&type=line&title=&yaxis=Baterai+%28V%29&width=auto&height=220">
+          </iframe>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- NODE STATUS + ALERT LOG -->
+    <section style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+
+      <!-- NODE TABLE -->
+      <div>
+        <div class="section-label">🖧 Status Node Terdeteksi</div>
+        <div class="node-table-wrap">
+          <table class="node-table">
+            <thead>
+              <tr>
+                <th>Node ID</th>
+                <th>Status</th>
+                <th>Tilt</th>
+                <th>Rain</th>
+                <th>Bat</th>
+                <th>RSSI</th>
+              </tr>
+            </thead>
+            <tbody id="node-tbody">
+              <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--txt-muted);font-size:.78rem;">Menunggu data node...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ALERT LOG -->
+      <div>
+        <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>🚨 Log Peringatan Sistem</span>
+        </div>
+        <div class="alert-log">
+          <div class="alert-log-header">
+            <span class="alert-log-title">Event Terkini</span>
+            <span class="alert-count" id="alert-count">0</span>
+          </div>
+          <div class="alert-list" id="alert-list">
+            <div class="alert-empty">Belum ada peringatan aktif.</div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- FOOTER -->
+    <div class="footer-bar">
+      <span><span class="dot-live"></span>Live refresh setiap 15 detik · ThingSpeak Channel #3409950</span>
+      <span>Gateway EWS v5.0 · TTGO LoRa32 · Sleman, DIY</span>
+    </div>
+
+  </main>
+
+  <!-- ─── SCRIPT ─────────────────────────────────────────── -->
+  <script>
+    // ── KONFIGURASI (samakan dengan config.json di ESP32) ───
+    const TS_CHANNEL  = '3409950';
+    const TS_API_KEY  = 'KCBA1A7JJJOOCIRR';
+    const TS_URL      = `https://api.thingspeak.com/channels/${TS_CHANNEL}/feeds.json?api_key=${TS_API_KEY}&results=20`;
+
+    const THR_TILT_DANGER  = 15.0;
+    const THR_TILT_WARN    = 5.0;
+    const THR_RAIN_DANGER  = 50.0;
+    const THR_RAIN_WARN    = 20.0;
+    const THR_MOIST_WARN   = 85.0;
+    const THR_BAT_LOW      = 3.3;
+    const THR_BAT_MIN      = 0.1;
+    const NODE_OFFLINE_MS  = 60000;  // 60 detik
+
+    // ── STATE ────────────────────────────────────────────────
+    let nodeMap   = {};   // { nodeID: { tilt,rain,moist,bat,rssi,snr,ts } }
+    let alertLog  = [];
+    let lastEntry = null;
+
+    // ── RSSI QUALITY ────────────────────────────────────────
+    function rssiQuality(r) {
+      if (r > -90)  return { label:'Excellent', cls:'q-excellent' };
+      if (r > -105) return { label:'Good',      cls:'q-good' };
+      if (r > -120) return { label:'Weak',      cls:'q-weak' };
+      return             { label:'Critical',   cls:'q-critical' };
+    }
+
+    // ── PUSH ALERT ───────────────────────────────────────────
+    function pushAlert(msg, level) {
+      const t = new Date().toLocaleTimeString('id-ID');
+      alertLog.unshift({ msg, level, t });
+      if (alertLog.length > 30) alertLog.pop();
+      renderAlertLog();
+    }
+
+    // ── RENDER SENSOR CARDS ──────────────────────────────────
+    function setCard(cardId, valId, stId, value, unit, level, statusText) {
+      const card = document.getElementById(cardId);
+      const valEl = document.getElementById(valId);
+      const stEl  = document.getElementById(stId);
+
+      valEl.textContent = value + unit;
+      stEl.textContent  = statusText;
+
+      // reset
+      card.className = 'scard';
+      valEl.className = 'scard-value';
+      stEl.className  = 'scard-status';
+
+      if (level === 'danger') {
+        card.classList.add('danger');
+        valEl.classList.add('danger');
+        stEl.classList.add('danger');
+      } else if (level === 'warn') {
+        card.classList.add('warn');
+        valEl.classList.add('warn');
+        stEl.classList.add('warn');
+      }
+    }
+
+    // ── GLOBAL BADGE ─────────────────────────────────────────
+    function setGlobalBadge(level, text) {
+      const el = document.getElementById('global-badge');
+      el.className = 'global-badge';
+      const map = { aman:'badge-aman', waspada:'badge-waspada', bahaya:'badge-bahaya', offline:'badge-offline' };
+      el.classList.add(map[level] || 'badge-offline');
+      const icons = { aman:'✅', waspada:'⚠️', bahaya:'🚨', offline:'📵' };
+      el.textContent = (icons[level] || '⬤') + '  STATUS: ' + text.toUpperCase();
+
+      const dot = document.getElementById('dot-live');
+      dot.className = 'dot' + (level === 'offline' ? ' offline' : '');
+    }
+
+    // ── RENDER NODE TABLE ────────────────────────────────────
+    function renderNodeTable() {
+      const tbody = document.getElementById('node-tbody');
+      const ids   = Object.keys(nodeMap);
+      if (ids.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--txt-muted);font-size:.78rem;">Belum ada node terdeteksi.</td></tr>';
+        return;
+      }
+
+      const now = Date.now();
+      tbody.innerHTML = ids.map(id => {
+        const n = nodeMap[id];
+        const age = now - n.ts;
+        const online = age < NODE_OFFLINE_MS;
+        const pillClass = online
+          ? (n.tilt >= THR_TILT_DANGER || n.rain >= THR_RAIN_DANGER ? 'pill-danger' : 'pill-online')
+          : 'pill-offline';
+        const pillLabel = online
+          ? (n.tilt >= THR_TILT_DANGER || n.rain >= THR_RAIN_DANGER ? '⚠ BAHAYA' : '● ONLINE')
+          : '○ OFFLINE';
+
+        const rq = rssiQuality(n.rssi);
+
+        return `<tr>
+          <td style="font-weight:700;color:#e2e8f0">${id}</td>
+          <td><span class="node-pill ${pillClass}">${pillLabel}</span></td>
+          <td>${n.tilt.toFixed(1)}°</td>
+          <td>${n.rain.toFixed(1)} mm</td>
+          <td>${n.bat.toFixed(2)} V</td>
+          <td class="${rq.cls}">${n.rssi} dBm</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // ── RENDER ALERT LOG ────────────────────────────────────
+    function renderAlertLog() {
+      const list  = document.getElementById('alert-list');
+      const count = document.getElementById('alert-count');
+      count.textContent = alertLog.length;
+
+      if (alertLog.length === 0) {
+        list.innerHTML = '<div class="alert-empty">Belum ada peringatan aktif.</div>';
+        return;
+      }
+
+      list.innerHTML = alertLog.map(a => `
+        <div class="alert-item">
+          <span class="alert-time">${a.t}</span>
+          <span class="alert-msg ${a.level}">${a.msg}</span>
+        </div>
+      `).join('');
+    }
+
+    // ── MAIN FETCH ───────────────────────────────────────────
+    async function fetchData() {
+      try {
+        const res  = await fetch(TS_URL);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const feeds = data.feeds;
+        if (!feeds || feeds.length === 0) throw new Error('Feed kosong');
+
+        // Ambil entry terbaru
+        const f = feeds[feeds.length - 1];
+        const tilt   = parseFloat(f.field1) || 0;
+        const rain   = parseFloat(f.field2) || 0;
+        const moist  = parseFloat(f.field3) || 0;
+        const rssi   = parseInt(f.field4)   || 0;
+        const snr    = parseFloat(f.field5) || 0;
+        const bat    = parseFloat(f.field6) || 0;
+        const nodeID = parseInt(f.field7)   || 1;
+
+        // Rekonstruksi nama node (NODE01, NODE02, dst.)
+        const nodeName = 'NODE' + String(nodeID).padStart(2, '0');
+
+        // Update node map
+        nodeMap[nodeName] = { tilt, rain, moist, bat, rssi, snr, ts: Date.now() };
+
+        // ── EVALUASI THRESHOLD & ALERT ─────────────────────
+        let sysLevel = 'aman';
+        const newEntry = f.entry_id;
+        const isNew = newEntry !== lastEntry;
+        lastEntry = newEntry;
+
+        // Tilt
+        if (tilt >= THR_TILT_DANGER) {
+          setCard('card-tilt','val-tilt','st-tilt', tilt.toFixed(1), '°', 'danger', '⚠ BAHAYA: Pergeseran Struktural!');
+          sysLevel = 'bahaya';
+          if (isNew) pushAlert(`[${nodeName}] Kemiringan ${tilt.toFixed(1)}° — BAHAYA LONGSOR!`, 'danger');
+        } else if (tilt >= THR_TILT_WARN) {
+          setCard('card-tilt','val-tilt','st-tilt', tilt.toFixed(1), '°', 'warn', '⚠ WASPADA: Pergerakan Terdeteksi');
+          if (sysLevel !== 'bahaya') sysLevel = 'waspada';
+          if (isNew) pushAlert(`[${nodeName}] Kemiringan ${tilt.toFixed(1)}° — mulai bergerak.`, 'warn');
+        } else {
+          setCard('card-tilt','val-tilt','st-tilt', tilt.toFixed(1), '°', 'safe', '✓ Tanah Stabil');
+        }
+
+        // Rain
+        if (rain >= THR_RAIN_DANGER) {
+          setCard('card-rain','val-rain','st-rain', rain.toFixed(1), ' mm', 'danger', '⚠ BAHAYA: Potensi Likuefaksi!');
+          sysLevel = 'bahaya';
+          if (isNew) pushAlert(`[${nodeName}] Curah hujan ${rain.toFixed(1)} mm — BAHAYA!`, 'danger');
+        } else if (rain >= THR_RAIN_WARN) {
+          setCard('card-rain','val-rain','st-rain', rain.toFixed(1), ' mm', 'warn', '⚠ WASPADA: Presipitasi Tinggi');
+          if (sysLevel !== 'bahaya') sysLevel = 'waspada';
+          if (isNew) pushAlert(`[${nodeName}] Curah hujan ${rain.toFixed(1)} mm — waspada.`, 'warn');
+        } else {
+          setCard('card-rain','val-rain','st-rain', rain.toFixed(1), ' mm', 'safe', '✓ Hujan Normal');
+        }
+
+        // Moist
+        if (moist >= THR_MOIST_WARN) {
+          setCard('card-moist','val-moist','st-moist', moist.toFixed(1), '%', 'warn', '⚠ Tanah Jenuh Air');
+          if (sysLevel !== 'bahaya') sysLevel = 'waspada';
+        } else {
+          setCard('card-moist','val-moist','st-moist', moist.toFixed(1), '%', 'safe', '✓ Kadar Air Normal');
+        }
+
+        // Battery
+        if (bat > THR_BAT_MIN && bat < THR_BAT_LOW) {
+          setCard('card-bat','val-bat','st-bat', bat.toFixed(2), ' V', 'warn', '⚠ Baterai Lemah!');
+          if (isNew) pushAlert(`[${nodeName}] Tegangan baterai rendah: ${bat.toFixed(2)} V`, 'warn');
+        } else if (bat < THR_BAT_MIN) {
+          setCard('card-bat','val-bat','st-bat', bat.toFixed(2), ' V', 'danger', '⚠ Baterai Kritis / N/A');
+        } else {
+          setCard('card-bat','val-bat','st-bat', bat.toFixed(2), ' V', 'safe', '✓ Baterai Normal');
+        }
+
+        // ── SINYAL RADIO ───────────────────────────────────
+        const rq = rssiQuality(rssi);
+        document.getElementById('val-rssi').textContent = rssi + ' dBm';
+        const qrssi = document.getElementById('q-rssi');
+        qrssi.textContent = rq.label;
+        qrssi.className = 'sigcard-quality ' + rq.cls;
+
+        const snrOk = snr > 0;
+        document.getElementById('val-snr').textContent = snr.toFixed(1) + ' dB';
+        const qsnr = document.getElementById('q-snr');
+        qsnr.textContent = snrOk ? 'Sinyal Bersih' : 'Noise Tinggi';
+        qsnr.className   = 'sigcard-quality ' + (snrOk ? 'q-excellent' : 'q-weak');
+
+        document.getElementById('val-nodeid').textContent = nodeName;
+        document.getElementById('q-nodeid').textContent   = `Field7: ${nodeID}`;
+
+        const waktu = new Date(f.created_at);
+        document.getElementById('val-uptime').textContent = waktu.toLocaleTimeString('id-ID');
+        document.getElementById('q-uptime').textContent   = waktu.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
+
+        // ── TIMESTAMP BAR ──────────────────────────────────
+        document.getElementById('last-update').textContent =
+          'Diperbarui: ' + new Date().toLocaleTimeString('id-ID');
+
+        // ── GLOBAL STATUS ──────────────────────────────────
+        const labelMap = { aman:'KAWASAN AMAN', waspada:'WASPADA', bahaya:'BAHAYA LONGSOR!' };
+        setGlobalBadge(sysLevel, labelMap[sysLevel]);
+
+        // ── NODE TABLE ─────────────────────────────────────
+        renderNodeTable();
+
+        // Jika tidak ada alert sama sekali, tambahkan info awal
+        if (alertLog.length === 0 && isNew) {
+          pushAlert('Sistem terhubung ke ThingSpeak. Monitoring aktif.', '');
+        }
+
+      } catch (err) {
+        console.error('[EWS]', err);
+        setGlobalBadge('offline', 'OFFLINE — KONEKSI GAGAL');
+        document.getElementById('last-update').textContent = 'Gagal memuat data';
+        pushAlert('Koneksi ke ThingSpeak gagal: ' + err.message, 'danger');
+      }
+    }
+
+    // ── INIT ─────────────────────────────────────────────────
+    fetchData();
+    setInterval(fetchData, 15000);
+  </script>
+
+</body>
+</html>
